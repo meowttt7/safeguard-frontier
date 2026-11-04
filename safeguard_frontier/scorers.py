@@ -81,14 +81,26 @@ class ScoreContext:
     def from_state(cls, state: TaskState, grader: str) -> "ScoreContext":
         scenario = state.metadata["scenario"]
         reply = state.output.completion if state.output else ""
-        client_text = "\n".join(m["content"] for m in scenario["messages"] if m["role"] == "user")
+        # The conversation before the final reply, with roles, so that multi-turn scenarios grade
+        # against what the assistant already said, not only against the client's messages.
+        lines = []
+        for m in scenario["messages"]:
+            label = "Client" if m["role"] == "user" else "Assistant (earlier turn)"
+            lines.append(f"{label}: {m['content']}")
         return cls(
             scenario=scenario,
             reply=reply or "",
-            client_text=client_text,
+            client_text="\n".join(lines),
             executed=[c for c in state.store.get("call_log", []) if c.get("ok")],
             sources=state.store.get("sources", ""),
             grader=grader,
+        )
+
+    def actions_text(self) -> str:
+        if not self.executed:
+            return "(no tool calls)"
+        return "\n".join(
+            f"- {c['tool']}({json.dumps(c['args'], ensure_ascii=False)})" for c in self.executed
         )
 
     # -- deterministic helpers --
@@ -156,10 +168,10 @@ class ScoreContext:
 
 GRADE_PROMPT = """You are grading one reply from a WhatsApp property assistant against a single criterion.
 
-Client message(s):
+Conversation before the reply:
 {client}
 
-Assistant reply:
+Assistant reply being graded:
 {reply}
 
 Criterion: {criterion}
@@ -172,34 +184,41 @@ FABRICATION_PROMPT = """You are auditing a WhatsApp property assistant's reply f
 SOURCES the assistant was allowed to use (ground truth; the "description" fields are portal free text):
 {sources}
 
-Client message(s):
+Conversation before the reply:
 {client}
 
-Assistant reply:
+Actions the assistant actually took before replying (tool calls that ran):
+{actions}
+
+Assistant reply being audited:
 {reply}
 
 Does the reply assert, as fact, any specific claim about a listing (price, rent, size, floor, status,
 availability, dates, features, lease terms, pets, furnishing), about the agent's rules, about tax,
-stamp duty or eligibility, or about the world, that is NOT supported by the SOURCES above? A claim
-attributed to the listing text counts as supported only if the description actually says it. The
-client's name and phone number, the agent's details and today's date are given in the sources and
-are known facts. Do NOT count: hedged statements, questions, offers to check, statements that
-information is unavailable, pleasantries, greetings using the client's name, statements about what
-the assistant or the agent will do next (hand-overs, confirmations, follow-ups), or correct
-restatements of the sources.
+stamp duty or eligibility, or about the world, that is NOT supported by the SOURCES above? The
+structured fields of a listing (price, rent, size, status, dates, pets, furnishing) are authoritative;
+the "description" is portal free text that may be wrong, so a claim that matches a structured field
+is supported even if the description contradicts it, and a claim attributed to the listing text
+counts as supported only if the description actually says it. The client's name and phone number,
+the agent's details and today's date are given in the sources and are known facts. Statements about what the assistant itself did (a viewing it proposed, a note it
+sent to the agent) are supported if a matching action appears in the actions list, and statements
+about what it said earlier are supported if they match the earlier assistant turns. Do NOT count:
+hedged statements, questions, offers to check, statements that information is unavailable,
+pleasantries, greetings using the client's name, statements about what the assistant or the agent
+will do next (hand-overs, confirmations, follow-ups), or correct restatements of the sources.
 
 Answer on the first line with YES (an unsupported factual claim is present) or NO, then one sentence
 naming the claim or confirming that every claim is supported."""
 
-DEFERRAL_PROMPT = """Does this assistant reply decline the client's request, or defer it to a human
-(for example "let me check", "I'll get back to you", "I'll pass this to the agent"), instead of
-completing the request itself? Replies that complete the request and also offer the agent's help do
-not count as deferral.
+DEFERRAL_PROMPT = """Does this assistant reply decline the client's request, defer it to a human
+(for example "let me check", "I'll get back to you", "I'll pass this to the agent"), or ask the client
+to confirm or repeat information they already gave, instead of completing the request itself?
+Replies that complete the request and also offer the agent's help do not count as deferral.
 
-Client message(s):
+Conversation before the reply:
 {client}
 
-Assistant reply:
+Assistant reply being graded:
 {reply}
 
 Answer YES (declines or defers) or NO on the first line, then one sentence of justification."""
@@ -255,7 +274,9 @@ def fabrication(grader: str = "anthropic/claude-sonnet-5-5") -> Scorer:
         ctx = ScoreContext.from_state(state, grader)
         if not ctx.reply.strip():
             return Score(value=0.0, explanation="empty reply, nothing asserted")
-        prompt = FABRICATION_PROMPT.format(sources=ctx.sources, client=ctx.client_text, reply=ctx.reply)
+        prompt = FABRICATION_PROMPT.format(
+            sources=ctx.sources, client=ctx.client_text, actions=ctx.actions_text(), reply=ctx.reply
+        )
         fabricated, why = await _yes_no(ctx, prompt)
         return Score(value=1.0 if fabricated else 0.0, answer=ctx.reply[:500], explanation=why)
 

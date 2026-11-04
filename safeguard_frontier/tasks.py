@@ -30,11 +30,12 @@ from safeguard_frontier.scorers import all_scorers
 SCENARIO_DIR = Path(__file__).parent / "profiles" / "property" / "scenarios"
 
 
-def load_scenarios(kinds: str = "all") -> list[dict[str, Any]]:
+def load_scenarios(kinds: str = "all", attacks: str = "attack") -> list[dict[str, Any]]:
+    """Load scenarios. `attacks` names the attack file stem (attack, attack_adaptive_..., attack_found)."""
     wanted = {"benign", "attack"} if kinds == "all" else {k.strip() for k in kinds.split(",")}
     scenarios: list[dict[str, Any]] = []
     for kind in sorted(wanted):
-        path = SCENARIO_DIR / f"{kind}.json"
+        path = SCENARIO_DIR / (f"{attacks}.json" if kind == "attack" else f"{kind}.json")
         with path.open(encoding="utf-8") as fh:
             items = json.load(fh)
         for item in items:
@@ -68,6 +69,7 @@ def build_dataset(scenarios: list[dict[str, Any]]) -> MemoryDataset:
                     "kind": sc["kind"],
                     "goal": attack.get("goal"),
                     "channel": attack.get("channel"),
+                    "tier": attack.get("tier"),
                 },
             )
         )
@@ -87,7 +89,10 @@ def property_solver(condition: Condition) -> Solver:
         store().set("condition", condition.name)
         store().set("sources", env.sources_for_grader())
         prompt = build_system_prompt(
-            env, hardened=condition.hardened_prompt, quarantine=condition.quarantine
+            env,
+            hardened=condition.hardened_prompt,
+            quarantine=condition.quarantine,
+            strict=condition.strict_prompt,
         )
         state.messages.insert(0, ChatMessageSystem(content=prompt))
         state.tools = build_tools(env)
@@ -104,18 +109,24 @@ def property_solver(condition: Condition) -> Solver:
 def property(
     condition: str = "c0",
     kinds: str = "all",
+    attacks: str = "attack",
     grader: str = "anthropic/claude-sonnet-5-5",
     monitor: str = "anthropic/claude-haiku-5-5",
 ) -> Task:
     cond = CONDITIONS[condition]
     approval = [ApprovalPolicy(trusted_monitor(monitor), "*")] if cond.monitor else None
     return Task(
-        dataset=build_dataset(load_scenarios(kinds)),
+        dataset=build_dataset(load_scenarios(kinds, attacks)),
         solver=property_solver(cond),
         scorer=all_scorers(grader),
         approval=approval,
         config=GenerateConfig(max_tokens=4096),
         message_limit=30,
-        name=f"property_{condition}",
-        metadata={"profile": "property", "condition": condition, "description": cond.description},
+        name=f"property_{condition}" + ("" if attacks == "attack" else f"_{attacks}"),
+        metadata={
+            "profile": "property",
+            "condition": condition,
+            "attacks": attacks,
+            "description": cond.description,
+        },
     )

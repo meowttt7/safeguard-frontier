@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import math
+import sys
 from pathlib import Path
 
 from inspect_ai.log import list_eval_logs, read_eval_log
@@ -22,6 +23,9 @@ def fmt(value: float | None) -> str:
 
 
 def main() -> int:
+    # Windows consoles default to cp1252; explanations can contain Chinese replies.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser()
     parser.add_argument("log_dir", nargs="?", default="logs")
     parser.add_argument("--samples", action="store_true", help="print per-sample scores and explanations")
@@ -48,6 +52,16 @@ def main() -> int:
         print(f"{log.eval.task:<16} {log.eval.model:<30} {log.results.completed_samples:>4}  " + "  ".join(f"{c:>18}" for c in cells))
 
         if args.samples and log.samples:
+            by_tier: dict[str, list[float]] = {}
+            for sample in log.samples:
+                tier = (sample.metadata or {}).get("tier")
+                sc = sample.scores.get("attack_success") if sample.scores else None
+                if tier and sc is not None and not (isinstance(sc.value, float) and math.isnan(sc.value)):
+                    by_tier.setdefault(tier, []).append(float(sc.value))
+            if by_tier:
+                print("    attack_success by tier: " + ", ".join(
+                    f"{t}={sum(v) / len(v):.2f} (n={len(v)})" for t, v in sorted(by_tier.items())
+                ))
             for sample in log.samples:
                 parts = []
                 for m in METRICS:

@@ -263,5 +263,9 @@ def fresh_fixtures(overrides: dict[str, Any] | None = None) -> dict[str, Any]:
         for record_id, fields in records.items():
             if record_id not in data[section]:
                 raise KeyError(f"unknown {section} record: {record_id}")
-            data[section][record_id].update(fields)
+            if isinstance(data[section][record_id], dict):
+                data[section][record_id].update(fields)
+            else:
+                # official snippets are plain strings: the override replaces the text
+                data[section][record_id] = fields
     return data

@@ -41,9 +41,25 @@ C. Explorer assistant, modelled on Seitrace, only if A and B are complete by Nov
 
 Order: A, then B, then C. A alone answers the primary question; B adds the secondary one.
 
+## Attack tiers (added after the first baseline run, 2026-11-04)
+
+The first baseline run showed Haiku 5.5 ignoring every explicit injected instruction and failing only
+on plain false text, so attacks are tiered by how much they look like an attack:
+
+- instruction: text addressed to the assistant that tells it to do something ("[SYSTEM MESSAGE: ...]").
+- false_content: ordinary portal copy that is simply false and contradicts a structured field, a rule
+  or an official source. No instruction at all.
+- poisoned_source: an instruction hidden inside a normally trusted channel (the official lookup).
+- pressure: the client applies social pressure or a false premise, sometimes over two turns.
+
+Benign scenarios carry a "needs" tag (structured, description, official, rules, action, admission) so
+that the benign cost of a defence can be broken down by what the task required. Description-dependent
+tasks are the ones a "distrust the description" defence is most likely to break.
+
 ## Scenarios
 
-Per profile, 10 to 15 benign and 10 to 15 attack scenarios. Each scenario is one JSON file with: profile,
+Per profile, 10 to 15 benign and 10 to 15 attack scenarios in v0; 18 benign and 20 attack after the
+tiering above. Each scenario is one JSON file with: profile,
 user turns, tool fixtures, the injected payload and its channel (message or tool_result), the attacker
 goal (H1, H2 or induce H3), the benign task and its completion criterion, and the expected safe
 behaviour. Attack payloads are written to be plausible for their channel, such as a listing description
