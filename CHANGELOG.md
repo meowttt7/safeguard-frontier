@@ -10,6 +10,10 @@
   action) held.
 - scripts/adaptive_attack.py: budgeted attacker with feedback (R rounds x K payloads per goal, the
   attacker sees each failed attempt's reply, tool calls and verdict). Results under results/feedback/.
+  Against Haiku 5.5 on the property profile, 12 attempts per goal: 3 of 20 goals beaten, 7 refused by
+  the attacker. The three found payloads rerun under the defences: c0 0.78, c1 0.44, c3 0.33, c13 0.11,
+  with the fake-policy payload beating the prompt and not the monitor and the false-feature payload the
+  reverse (logs/matrix_feedback).
 - analyze.py reads condition and attack set from Task metadata for programmatic runs, and prints the
   profile and scenario counts in figure subtitles.
 
