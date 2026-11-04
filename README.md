@@ -42,10 +42,27 @@ Built on [Inspect](https://inspect.aisi.org.uk/), the UK AI Security Institute's
 uv sync
 cp .env.example .env          # paste your Anthropic API key into .env
 uv run python scripts/smoke_test.py
+
+# one condition, one model, the standard scenario set (18 benign + 20 attack)
+uv run inspect eval safeguard_frontier/tasks.py@property -T condition=c1 \
+    --model anthropic/claude-haiku-5-5 --log-dir logs/dev --display plain
+uv run python scripts/summarize.py logs/dev --samples
+
+# adaptive attacks: generate variants, run them against the baseline, keep the ones that succeed
+uv run python scripts/generate_attacks.py --n 5 --attacker claude-sonnet-5-5 --out attack_adaptive_sonnet
+uv run inspect eval safeguard_frontier/tasks.py@property -T condition=c0 -T kinds=attack \
+    -T attacks=attack_adaptive_sonnet --model anthropic/claude-haiku-5-5 --log-dir logs/adaptive_c0/haiku-5-5
+uv run python scripts/select_found.py logs/adaptive_c0/haiku-5-5 --source attack_adaptive_sonnet --out attack_found_haiku55
+
+# the full matrix for one model (every condition, standard set plus that model's found variants), then the analysis
+uv run python scripts/run_matrix.py --model anthropic/claude-haiku-5-5 --found attack_found_haiku55 --epochs 3
+uv run python scripts/analyze.py logs/matrix --out results
 ```
 
-Evaluation tasks live under `safeguard_frontier/` and run with `inspect eval`. Instructions follow once
-the first task exists.
+Conditions are defined in `safeguard_frontier/conditions.py`: c0 baseline, c1 hardened prompt, c2 quarantined
+tool results, c3 trusted monitor, c4 tool-level tenant scoping, c5 strict prompt (deliberately over-cautious),
+c13 hardened prompt plus monitor. On Windows set `PYTHONIOENCODING=utf-8` for the scripts, since some replies
+are in Chinese. Logs are Inspect `.eval` files; `inspect view` opens them in a browser.
 
 ## Provenance
 
