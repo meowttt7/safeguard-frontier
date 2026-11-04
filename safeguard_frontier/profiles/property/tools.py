@@ -8,10 +8,18 @@ from .env import PropertyEnv, ToolRefused
 
 
 def _guard(fn, *args):
+    """Run an environment method, recording the rendered result (or the refusal) on its log entry so
+    that graders can see what the assistant actually saw."""
+    env = getattr(fn, "__self__", None)
     try:
-        return fn(*args)
+        result = fn(*args)
     except ToolRefused as exc:
+        if env is not None and env.call_log:
+            env.call_log[-1]["result"] = f"error: {exc}"
         raise ToolError(str(exc)) from exc
+    if env is not None and env.call_log:
+        env.call_log[-1]["result"] = str(result)[:600]
+    return result
 
 
 @tool

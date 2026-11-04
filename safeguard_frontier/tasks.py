@@ -1,15 +1,16 @@
-"""Inspect tasks. Run with, for example:
+"""Inspect tasks, one per deployment profile. Run with, for example:
 
     uv run inspect eval safeguard_frontier/tasks.py@property -T condition=c0 \
         --model anthropic/claude-haiku-5-5 --epochs 3 --log-dir logs/property
+    uv run inspect eval safeguard_frontier/tasks.py@trading -T condition=c3 \
+        --model anthropic/claude-sonnet-5-5 --log-dir logs/trading
 
-Conditions are listed in conditions.py. Scenarios live in profiles/property/scenarios/.
+Conditions are listed in conditions.py. Scenarios live in profiles/<profile>/scenarios/.
 """
 
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 from inspect_ai import Task, task
@@ -22,20 +23,17 @@ from inspect_ai.util import store
 # Absolute imports: Inspect loads this file by path, outside the package, when run from the CLI.
 from safeguard_frontier.conditions import CONDITIONS, Condition
 from safeguard_frontier.monitor import trusted_monitor
-from safeguard_frontier.profiles.property.env import PropertyEnv
-from safeguard_frontier.profiles.property.prompts import build_system_prompt
-from safeguard_frontier.profiles.property.tools import build_tools
+from safeguard_frontier.profiles.registry import ProfileSpec, get_profile
 from safeguard_frontier.scorers import all_scorers
 
-SCENARIO_DIR = Path(__file__).parent / "profiles" / "property" / "scenarios"
 
-
-def load_scenarios(kinds: str = "all", attacks: str = "attack") -> list[dict[str, Any]]:
-    """Load scenarios. `attacks` names the attack file stem (attack, attack_adaptive_..., attack_found)."""
+def load_scenarios(kinds: str = "all", attacks: str = "attack", profile: str = "property") -> list[dict[str, Any]]:
+    """Load scenarios for a profile. `attacks` names the attack file stem (attack, attack_adaptive_..., attack_found_...)."""
+    spec = get_profile(profile)
     wanted = {"benign", "attack"} if kinds == "all" else {k.strip() for k in kinds.split(",")}
     scenarios: list[dict[str, Any]] = []
     for kind in sorted(wanted):
-        path = SCENARIO_DIR / (f"{attacks}.json" if kind == "attack" else f"{kind}.json")
+        path = spec.scenario_dir / (f"{attacks}.json" if kind == "attack" else f"{kind}.json")
         with path.open(encoding="utf-8") as fh:
             items = json.load(fh)
         for item in items:
@@ -47,7 +45,7 @@ def load_scenarios(kinds: str = "all", attacks: str = "attack") -> list[dict[str
     return scenarios
 
 
-def build_dataset(scenarios: list[dict[str, Any]]) -> MemoryDataset:
+def build_dataset(scenarios: list[dict[str, Any]], name: str = "scenarios") -> MemoryDataset:
     samples: list[Sample] = []
     for sc in scenarios:
         messages = []
@@ -73,36 +71,66 @@ def build_dataset(scenarios: list[dict[str, Any]]) -> MemoryDataset:
                 },
             )
         )
-    return MemoryDataset(samples, name="property")
+    return MemoryDataset(samples, name=name)
 
 
 @solver
-def property_solver(condition: Condition) -> Solver:
+def profile_solver(spec: ProfileSpec, condition: Condition) -> Solver:
     async def solve(state: TaskState, generate: Generate) -> TaskState:
         scenario = state.metadata["scenario"]
-        env = PropertyEnv.from_scenario(
+        env = spec.env_from_scenario(
             scenario,
             structural_scoping=condition.structural_scoping,
             quarantine=condition.quarantine,
         )
-        store().set("tenant_id", env.tenant_id)
         store().set("condition", condition.name)
+        store().set("profile", spec.name)
+        store().set("deployment", spec.deployment)
         store().set("sources", env.sources_for_grader())
-        prompt = build_system_prompt(
+        store().set("canaries", spec.canaries)
+        store().set("monitor_policy", spec.monitor_policy(env))
+        prompt = spec.build_system_prompt(
             env,
             hardened=condition.hardened_prompt,
             quarantine=condition.quarantine,
             strict=condition.strict_prompt,
         )
+        store().set("system_prompt", prompt)
         state.messages.insert(0, ChatMessageSystem(content=prompt))
-        state.tools = build_tools(env)
+        state.tools = spec.build_tools(env)
         state = await generate(state)
         store().set("call_log", env.call_log)
-        store().set("proposals", env.proposals)
-        store().set("handoffs", env.handoffs)
         return state
 
     return solve
+
+
+def make_task(
+    profile: str,
+    condition: str = "c0",
+    kinds: str = "all",
+    attacks: str = "attack",
+    grader: str = "anthropic/claude-sonnet-5-5",
+    monitor: str = "anthropic/claude-haiku-5-5",
+) -> Task:
+    spec = get_profile(profile)
+    cond = CONDITIONS[condition]
+    approval = [ApprovalPolicy(trusted_monitor(monitor), "*")] if cond.monitor else None
+    return Task(
+        dataset=build_dataset(load_scenarios(kinds, attacks, profile), name=profile),
+        solver=profile_solver(spec, cond),
+        scorer=all_scorers(grader),
+        approval=approval,
+        config=GenerateConfig(max_tokens=4096),
+        message_limit=30,
+        name=f"{profile}_{condition}" + ("" if attacks == "attack" else f"_{attacks}"),
+        metadata={
+            "profile": profile,
+            "condition": condition,
+            "attacks": attacks,
+            "description": cond.description,
+        },
+    )
 
 
 @task
@@ -113,20 +141,15 @@ def property(
     grader: str = "anthropic/claude-sonnet-5-5",
     monitor: str = "anthropic/claude-haiku-5-5",
 ) -> Task:
-    cond = CONDITIONS[condition]
-    approval = [ApprovalPolicy(trusted_monitor(monitor), "*")] if cond.monitor else None
-    return Task(
-        dataset=build_dataset(load_scenarios(kinds, attacks)),
-        solver=property_solver(cond),
-        scorer=all_scorers(grader),
-        approval=approval,
-        config=GenerateConfig(max_tokens=4096),
-        message_limit=30,
-        name=f"property_{condition}" + ("" if attacks == "attack" else f"_{attacks}"),
-        metadata={
-            "profile": "property",
-            "condition": condition,
-            "attacks": attacks,
-            "description": cond.description,
-        },
-    )
+    return make_task("property", condition, kinds, attacks, grader, monitor)
+
+
+@task
+def trading(
+    condition: str = "c0",
+    kinds: str = "all",
+    attacks: str = "attack",
+    grader: str = "anthropic/claude-sonnet-5-5",
+    monitor: str = "anthropic/claude-haiku-5-5",
+) -> Task:
+    return make_task("trading", condition, kinds, attacks, grader, monitor)

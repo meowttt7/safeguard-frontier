@@ -87,6 +87,7 @@ def load_rows(log_dir: str) -> list[dict]:
             scenario = md.get("scenario") or {}
             base = {
                 "_key": key,
+                "profile": (log.eval.task or "").split("_")[0],
                 "model": model,
                 "condition": condition,
                 "set": set_name,
@@ -264,10 +265,13 @@ def plot_dots(rows: list[dict], out: Path) -> None:
                 ax.set_title(MODEL_LABELS.get(model, model), loc="left", fontsize=11, color=INK, pad=6)
             else:
                 ax.set_title(" ", loc="left", fontsize=11, pad=6)
+    n_attacks = len({r["sample_id"] for r in standard if r["kind"] == "attack"})
+    n_benign = len({r["sample_id"] for r in standard if r["kind"] == "benign"})
+    profile = next((r.get("profile", "") for r in standard if r.get("profile")), "")
     top = titles(
         fig,
-        "What each defence buys and what it costs, by model",
-        "Standard scenario set: 20 attacks and 18 benign tasks, 3 epochs. Dots are rates, lines are 95% bootstrap intervals over scenarios. Lower is better on the left, higher on the right.",
+        f"What each defence buys and what it costs, by model ({profile} profile)" if profile else "What each defence buys and what it costs, by model",
+        f"Standard scenario set: {n_attacks} attacks and {n_benign} benign tasks, 3 epochs. Dots are rates, lines are 95% bootstrap intervals over scenarios. Lower is better on the left, higher on the right.",
     )
     fig.tight_layout(rect=(0, 0, 1, top))
     fig.savefig(out / "dots.png", dpi=200, facecolor=SURFACE)

@@ -1,10 +1,10 @@
 """Select the adaptive variants that beat the baseline and write them as a fixed attack set.
 
-    uv run python scripts/select_found.py logs/adaptive_c0 --source attack_adaptive_sonnet --out attack_found
+    uv run python scripts/select_found.py logs/adaptive_c0/haiku-5-5 --profile property --source attack_adaptive_sonnet --out attack_found_haiku55
 
 Reads every log under the directory, collects sample ids whose attack_success score is 1 in any epoch,
-and writes those scenarios (from the source file) to scenarios/<out>.json. Also prints best-of-N
-success per base scenario, which is the headline for the adaptive attacker.
+and writes those scenarios (from the source file) to the profile's scenarios/<out>.json. Also prints
+best-of-N success per base scenario, which is the headline for the adaptive attacker.
 """
 
 from __future__ import annotations
@@ -16,17 +16,19 @@ from collections import defaultdict
 
 from inspect_ai.log import list_eval_logs, read_eval_log
 
-from safeguard_frontier.tasks import SCENARIO_DIR
+from safeguard_frontier.profiles.registry import get_profile
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("log_dir")
+    parser.add_argument("--profile", default="property")
     parser.add_argument("--source", default="attack_adaptive_sonnet")
     parser.add_argument("--out", default="attack_found")
     args = parser.parse_args()
 
-    source = json.loads((SCENARIO_DIR / f"{args.source}.json").read_text(encoding="utf-8"))
+    scenario_dir = get_profile(args.profile).scenario_dir
+    source = json.loads((scenario_dir / f"{args.source}.json").read_text(encoding="utf-8"))
     by_id = {s["id"]: s for s in source}
 
     hits: set[str] = set()
@@ -54,7 +56,7 @@ def main() -> int:
     print(f"\nbest-of-N success: {bases_hit}/{len(per_base)} base scenarios; {len(hits)} successful variants")
 
     found = [by_id[i] for i in sorted(hits)]
-    out = SCENARIO_DIR / f"{args.out}.json"
+    out = scenario_dir / f"{args.out}.json"
     out.write_text(json.dumps(found, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"wrote {len(found)} scenarios to {out}")
     return 0

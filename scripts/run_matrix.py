@@ -1,7 +1,7 @@
-"""Run the condition matrix for one model: every condition on the standard scenario set and, if given,
-on the adaptive variants that beat that model's baseline.
+"""Run the condition matrix for one model and one profile: every condition on the standard scenario set
+and, if given, on the adaptive variants that beat that model's baseline.
 
-    uv run python scripts/run_matrix.py --model anthropic/claude-haiku-5-5 --found attack_found_haiku55
+    uv run python scripts/run_matrix.py --profile trading --model anthropic/claude-haiku-5-5 --found attack_found_haiku55
 
 Logs go to <log-dir>/<model-short-name>/. One process per model keeps model-level parallelism simple.
 """
@@ -12,11 +12,13 @@ import argparse
 
 from inspect_ai import eval as inspect_eval
 
-from safeguard_frontier.tasks import SCENARIO_DIR, property
+from safeguard_frontier.profiles.registry import get_profile
+from safeguard_frontier.tasks import make_task
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--profile", default="property")
     parser.add_argument("--model", required=True, help="e.g. anthropic/claude-haiku-5-5")
     parser.add_argument("--conditions", default="c0,c1,c2,c3,c4,c5,c13")
     parser.add_argument("--epochs", type=int, default=3)
@@ -27,13 +29,14 @@ def main() -> int:
     parser.add_argument("--no-standard", dest="standard", action="store_false")
     args = parser.parse_args()
 
+    spec = get_profile(args.profile)
     short = args.model.split("/")[-1]
     tasks = []
     for cond in [c.strip() for c in args.conditions.split(",") if c.strip()]:
         if args.standard:
-            tasks.append(property(condition=cond))
-        if args.found and (SCENARIO_DIR / f"{args.found}.json").exists():
-            tasks.append(property(condition=cond, kinds="attack", attacks=args.found))
+            tasks.append(make_task(args.profile, condition=cond))
+        if args.found and (spec.scenario_dir / f"{args.found}.json").exists():
+            tasks.append(make_task(args.profile, condition=cond, kinds="attack", attacks=args.found))
     inspect_eval(
         tasks,
         model=args.model,
