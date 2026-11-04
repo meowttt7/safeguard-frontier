@@ -13,7 +13,10 @@
   Against Haiku 5.5 on the property profile, 12 attempts per goal: 3 of 20 goals beaten, 7 refused by
   the attacker. The three found payloads rerun under the defences: c0 0.78, c1 0.44, c3 0.33, c13 0.11,
   with the fake-policy payload beating the prompt and not the monitor and the false-feature payload the
-  reverse (logs/matrix_feedback).
+  reverse (logs/matrix_feedback). Sonnet 5.5: 4 of 20 beaten, 7 refused; found payloads c0 0.42,
+  c1 0.00, c3 0.25, c13 0.00. Opus 5.5: 2 of 20 beaten, 6 refused; found payloads c0 1.00, c1 0.67,
+  c3 0.00, c13 0.00.
+- Total spend for everything in this repository: about 150 USD.
 - analyze.py reads condition and attack set from Task metadata for programmatic runs, and prints the
   profile and scenario counts in figure subtitles.
 

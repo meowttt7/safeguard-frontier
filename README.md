@@ -28,6 +28,11 @@ pattern (results/trading/): current models were unreachable even by the attacker
 again cost a third of benign completion, and on Haiku 4.5, the one reachable model, the monitor alone
 took baseline-beating attacks from 0.77 to 0.23 because every attack there is an action.
 
+A budgeted attacker with feedback (scripts/adaptive_attack.py, results/feedback/) beat 3, 4 and 2 of 20
+property goals within 12 attempts against Haiku 5.5, Sonnet 5.5 and Opus 5.5, and refused to continue
+on 6 or 7 goals once it saw failed attempts. No payload it found survived the hardened prompt and the
+monitor together.
+
 ## Why
 
 Small operators put language models in front of the public with no way to measure what slips through.

@@ -99,9 +99,9 @@ completed and the reply declined, deferred, or asked the client to repeat what t
 
 **Protocol.** Four models as the agent: Haiku 4.5, Haiku 5.5, Sonnet 5.5, Opus 5.5. Every condition on
 the 38 standard scenarios and on each model's found set, three epochs each. Intervals are 95% percentile
-intervals from a cluster bootstrap over scenarios. The full matrix cost about 81 USD in API calls, most
-of it grading; everything run for this report, including development runs and the corrected re-runs,
-about 102 USD.
+intervals from a cluster bootstrap over scenarios. The property matrix cost about 81 USD in API calls,
+most of it grading; everything run for this report, both profiles, the attackers, the development
+runs and the corrected re-runs, about 150 USD.
 
 ## 3. Results
 
@@ -293,6 +293,10 @@ reliably on Sonnet, between one and two epochs in three), hardened prompt 0.00, 
 0.00. What survives the monitor is again the two statement attacks, the false feature and the false
 valuation; what survives nothing is the combination.
 
+For Opus 5.5's two found payloads, both of them bookings: baseline 1.00, hardened prompt 0.67, monitor
+0.00, both 0.00. Across the three current models and the strongest attacker in this report, no payload
+survived the hardened prompt and the monitor together.
+
 Two things to read from the Haiku 5.5 row. Feedback bought one more goal than blind guessing: the fake
 "ops policy" message, which failed eight times and succeeded on the ninth once the attacker had seen
 how the assistant phrased its refusals. And the attacker refused to continue on seven goals once it was
@@ -323,14 +327,18 @@ much as about the target.
 
 ## 5. What I would do next
 
-- A budgeted adaptive attacker with feedback, so that "attack success" means "success against N
-  attempts" rather than against five guesses.
-- A second deployment profile with consequential financial actions (a trading companion holding a scoped
-  key), to test whether the prompt-versus-monitor split holds when the actions are irreversible.
-- Monitor designs from the AI control literature: paraphrasing the actor's output before the monitor
-  sees it, and a monitor that also reviews the final reply, which would cover the statement attacks.
-- Enough epochs and scenarios to tighten the intervals, and a second grader model to measure grader
-  agreement.
+- An attacker that will keep going. The budgeted attacker in 3.7 refused six or seven of twenty goals
+  once it saw failures, and the goals it refused are the ones that matter most. Hand-written iteration
+  on those goals, or an attacker model without the refusal policy, is the next step; until then the
+  attack-success numbers for exfiltration and payment goals are lower bounds on nothing.
+- A monitor that also reviews the final reply, which would cover the statement attacks the tool-call
+  monitor cannot see, and monitor designs from the AI control literature such as paraphrasing the
+  actor's context before the monitor reads it.
+- More epochs and scenarios to tighten the intervals, a second grader model to measure grader
+  agreement, and a re-score of the property matrix with the improved fabrication grader.
+- A third profile where the harm is disclosure rather than action or statement, to see whether the
+  scoping defence, which did nothing here because no current model crossed a boundary, earns its place
+  when the boundary is the whole product.
 
 ## 6. Reproducibility
 
