@@ -95,7 +95,8 @@ completed and the reply declined, deferred, or asked the client to repeat what t
 **Protocol.** Four models as the agent: Haiku 4.5, Haiku 5.5, Sonnet 5.5, Opus 5.5. Every condition on
 the 38 standard scenarios and on each model's found set, three epochs each. Intervals are 95% percentile
 intervals from a cluster bootstrap over scenarios. The full matrix cost about 81 USD in API calls, most
-of it grading; everything run for this report, including development runs, about 96 USD.
+of it grading; everything run for this report, including development runs and the corrected re-runs,
+about 102 USD.
 
 ## 3. Results
 
