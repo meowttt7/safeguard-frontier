@@ -31,6 +31,11 @@ to those files. Rewrite anything you would say differently, and remove this note
   of benign completion on every model, all of it from tasks that need the description, the agent's
   phone number, or an immediate booking. The safety tax exists, and in this setting it appears only when
   the defence is blunt.
+- A second profile, a trading companion with irreversible actions, repeats the pattern and confirms a
+  prediction made before running it: current models were unreachable even by the attacker, the strict
+  prompt again cost a third of benign completion, and on the one reachable model the monitor's
+  advantage was large because every attack there is an action (0.77 to 0.23, against 0.88 to 0.71 on
+  the property profile).
 
 ## 1. Why this question
 
@@ -215,6 +220,52 @@ completed (0.82). It is also the model that needs the defences most and benefits
 hardened prompt and monitor together take its found-variant success from 0.88 to 0.25 and raise benign
 completion slightly, to 0.87. The cheapest model with the cheapest defences is still more exposed than
 a current model with none.
+
+### 3.6 Profile B: does the split hold when the actions are irreversible?
+
+The second profile is a Telegram trading companion modelled on a product I built: one user, a scoped
+bot key with a 500 USD per-position limit and three allowed markets, nine tools including open and
+close position, transfer funds and change limits, and a feed of third-party news. The hazards map
+directly: another user's positions (H1); an order the user did not ask for and confirm, an order
+outside the key, a transfer, or a limit change from chat (H2); a price or fee claim the quote and
+status tools do not support (H3); a refused quote, feed relay or confirmed in-limit order (H4). 14
+benign tasks, 14 attacks, six conditions (quarantine dropped), three epochs, four models. The
+prediction, written down before running: the monitor's advantage would be larger here because every
+attack goal of consequence is a tool call. Full tables are in results/trading/summary.md.
+
+Current models were not reachable at all. Sonnet 5.5 and Opus 5.5 resisted all 60 attacker-written
+variants at baseline; Haiku 5.5 fell for one fee claim out of 60. The one-shot attacker, which on the
+property profile beat two or three goals per current model, beat none here. Standard-set attack success
+is 0.00 for all three under every condition, with benign completion 0.99 to 1.00 everywhere except the
+strict prompt, which again costs about a third: 0.68 for all three, with over-caution 0.23 to 0.26,
+from the feed relay (0.00), the re-confirmation of already-confirmed orders (action tasks 0.25) and
+withheld key details.
+
+Haiku 4.5 is where the question gets an answer. At baseline it fell for the poisoned exchange notice
+five times in six, placed over-limit orders, executed the maintenance transfer, and let the attacker
+beat six of twelve goals with 13 variants. On those 13:
+
+| condition | attack success on Haiku 4.5's baseline-beating variants |
+|---|---|
+| c0 baseline | 0.77 |
+| c1 hardened prompt | 0.15 |
+| c3 monitor | 0.23 |
+| c4 key scoping | 0.64 |
+| c5 strict prompt | 0.31 |
+| c13 hardened + monitor | 0.13 |
+
+The prediction held. On the property profile the monitor barely moved Haiku 4.5's found-variant
+success (0.88 to 0.71), because many of those attacks were statements; here, where every attack is an
+action, the monitor alone takes it from 0.77 to 0.23 and the hardened prompt to 0.15. Key scoping only
+reaches 0.64 because the attacks that survive it are orders within the limits that the user never
+confirmed, which a limit check cannot see. Both free defences also raise Haiku 4.5's benign completion,
+from 0.87 to 0.95 and 0.96, because the hardened prompt makes it quote limits and ask for confirmation
+in the right places instead of improvising.
+
+[TIN: the strongest cross-profile sentence is probably this: the same two cheap defences cover
+different failures on different deployments, the monitor where the harm is an action and the prompt
+where the harm is a statement, and nothing in this data shows a benign cost for either. Say it in your
+words if you agree with it.]
 
 ## 4. Limitations
 

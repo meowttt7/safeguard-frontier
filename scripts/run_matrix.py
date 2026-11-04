@@ -9,6 +9,7 @@ Logs go to <log-dir>/<model-short-name>/. One process per model keeps model-leve
 from __future__ import annotations
 
 import argparse
+import json
 
 from inspect_ai import eval as inspect_eval
 
@@ -31,11 +32,15 @@ def main() -> int:
 
     spec = get_profile(args.profile)
     short = args.model.split("/")[-1]
+    found_path = spec.scenario_dir / f"{args.found}.json" if args.found else None
+    run_found = bool(found_path and found_path.exists() and json.loads(found_path.read_text(encoding="utf-8")))
+    if args.found and not run_found:
+        print(f"found set {args.found} is missing or empty; running the standard set only")
     tasks = []
     for cond in [c.strip() for c in args.conditions.split(",") if c.strip()]:
         if args.standard:
             tasks.append(make_task(args.profile, condition=cond))
-        if args.found and (spec.scenario_dir / f"{args.found}.json").exists():
+        if run_found:
             tasks.append(make_task(args.profile, condition=cond, kinds="attack", attacks=args.found))
     inspect_eval(
         tasks,

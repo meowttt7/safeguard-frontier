@@ -23,6 +23,11 @@ CHANGELOG.md and the pre-registered design is in docs/design.md.
 
 ![Do the defences stop the attacks that beat the baseline?](results/found_attacks.png)
 
+A second profile, a trading companion with a scoped bot key and irreversible actions, repeats the
+pattern (results/trading/): current models were unreachable even by the attacker, the strict prompt
+again cost a third of benign completion, and on Haiku 4.5, the one reachable model, the monitor alone
+took baseline-beating attacks from 0.77 to 0.23 because every attack there is an action.
+
 ## Why
 
 Small operators put language models in front of the public with no way to measure what slips through.

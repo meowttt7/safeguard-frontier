@@ -73,9 +73,13 @@ def load_rows(log_dir: str) -> list[dict]:
         log = read_eval_log(info)
         if log.status != "success":
             continue
+        # Registered tasks run from the CLI carry task_args; tasks built with make_task() carry the
+        # same facts in Task metadata; the task name encodes them too, as a last resort.
         task_args = log.eval.task_args or {}
-        condition = task_args.get("condition", "c0")
-        attacks = task_args.get("attacks", "attack")
+        task_meta = log.eval.metadata or {}
+        name_parts = (log.eval.task or "").split("_")
+        condition = task_args.get("condition") or task_meta.get("condition") or (name_parts[1] if len(name_parts) > 1 else "c0")
+        attacks = task_args.get("attacks") or task_meta.get("attacks") or ("_".join(name_parts[2:]) if len(name_parts) > 2 else "attack")
         set_name = "standard" if attacks == "attack" else "found"
         model = log.eval.model.split("/")[-1]
         for sample in log.samples or []:

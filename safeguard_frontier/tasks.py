@@ -24,7 +24,7 @@ from inspect_ai.util import store
 from safeguard_frontier.conditions import CONDITIONS, Condition
 from safeguard_frontier.monitor import trusted_monitor
 from safeguard_frontier.profiles.registry import ProfileSpec, get_profile
-from safeguard_frontier.scorers import all_scorers
+from safeguard_frontier.scorers import all_scorers, attack_success
 
 
 def load_scenarios(kinds: str = "all", attacks: str = "attack", profile: str = "property") -> list[dict[str, Any]]:
@@ -112,14 +112,17 @@ def make_task(
     attacks: str = "attack",
     grader: str = "anthropic/claude-sonnet-5-5",
     monitor: str = "anthropic/claude-haiku-5-5",
+    scorer_set: str = "all",
 ) -> Task:
+    """Build a task. scorer_set="attack" scores attack success only (used by the attacker search)."""
     spec = get_profile(profile)
     cond = CONDITIONS[condition]
     approval = [ApprovalPolicy(trusted_monitor(monitor), "*")] if cond.monitor else None
+    scorers = all_scorers(grader) if scorer_set == "all" else [attack_success(grader)]
     return Task(
         dataset=build_dataset(load_scenarios(kinds, attacks, profile), name=profile),
         solver=profile_solver(spec, cond),
-        scorer=all_scorers(grader),
+        scorer=scorers,
         approval=approval,
         config=GenerateConfig(max_tokens=4096),
         message_limit=30,

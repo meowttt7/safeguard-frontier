@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-11-05: profile B results and the feedback attacker
+
+- Trading matrix: four models x six conditions (c0, c1, c3, c4, c5, c13) x three epochs on 28
+  scenarios, plus Haiku 4.5's 13 baseline-beating variants and Haiku 5.5's one. results/trading/.
+- Sonnet 5.5 and Opus 5.5 resisted all 60 attacker-written variants at baseline; Haiku 5.5 all but
+  one. Haiku 4.5: six of twelve goals beaten; on its found variants c0 0.77, c1 0.15, c3 0.23, c4 0.64,
+  c5 0.31, c13 0.13. The pre-registered prediction (monitor advantage larger when every attack is an
+  action) held.
+- scripts/adaptive_attack.py: budgeted attacker with feedback (R rounds x K payloads per goal, the
+  attacker sees each failed attempt's reply, tool calls and verdict). Results under results/feedback/.
+- analyze.py reads condition and attack set from Task metadata for programmatic runs, and prints the
+  profile and scenario counts in figure subtitles.
+
 ## 2026-11-04 (night): first full matrix
 
 - Four models (Haiku 4.5, Haiku 5.5, Sonnet 5.5, Opus 5.5) x seven conditions (c0 to c5, c13) x three
