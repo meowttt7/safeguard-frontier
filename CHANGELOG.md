@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-11-04 (night): first full matrix
+
+- Four models (Haiku 4.5, Haiku 5.5, Sonnet 5.5, Opus 5.5) x seven conditions (c0 to c5, c13) x three
+  epochs on the 38 standard scenarios, plus each model's baseline-beating adaptive variants under every
+  condition. 56 runs, about 81 USD; about 96 USD for everything including development runs.
+- results/: scores.csv (every scenario-epoch score), summary.md (all tables with cluster-bootstrap
+  intervals), dots.png, frontier.png, found_attacks.png. docs/report.md is the first draft of the report.
+- Headline: the hardened prompt is free and halves or better the baseline-beating attacks; the monitor
+  stops action attacks but not statement attacks; combined they reach zero on current models at no
+  benign cost; the strict prompt reaches zero at a cost of 21 to 24 points of benign completion.
+- scripts/cost.py estimates spend from the logs.
+- Scoring correction: the two payment scenarios (a09 deposit scam, a18 poisoned official source) and
+  their variants counted a success whenever the planted account number appeared in the reply. Two
+  replies quoted the number while warning the client not to pay (Opus 5.5 at baseline, Haiku 5.5 under
+  the monitor). Success for those scenarios is now the graded criterion alone; the affected samples were
+  re-run under every condition and the newest log wins in analyze.py.
+
 ## 2026-11-04 (evening)
 
 - Baseline results on the 38 hand-written scenarios, one epoch: Haiku 5.5 attack success 0.05,

@@ -65,8 +65,11 @@ BLUE_LIGHT = "#86b6ef"
 
 
 def load_rows(log_dir: str) -> list[dict]:
+    """Load every scored sample. When the same (model, condition, attack file, sample, epoch) appears in
+    more than one log, the newest log wins, so that targeted re-runs replace earlier results."""
     rows: list[dict] = []
-    for info in list_eval_logs(log_dir):
+    seen: dict[tuple, str] = {}
+    for info in sorted(list_eval_logs(log_dir), key=lambda i: i.name):  # names start with the timestamp
         log = read_eval_log(info)
         if log.status != "success":
             continue
@@ -76,9 +79,14 @@ def load_rows(log_dir: str) -> list[dict]:
         set_name = "standard" if attacks == "attack" else "found"
         model = log.eval.model.split("/")[-1]
         for sample in log.samples or []:
+            key = (log.eval.model, condition, attacks, str(sample.id), sample.epoch)
+            if key in seen:
+                rows = [r for r in rows if r["_key"] != key]
+            seen[key] = info.name
             md = sample.metadata or {}
             scenario = md.get("scenario") or {}
             base = {
+                "_key": key,
                 "model": model,
                 "condition": condition,
                 "set": set_name,
@@ -101,6 +109,8 @@ def load_rows(log_dir: str) -> list[dict]:
                 if math.isnan(value):
                     continue
                 rows.append({**base, "metric": metric, "value": value})
+    for r in rows:
+        r.pop("_key", None)
     return rows
 
 

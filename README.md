@@ -3,8 +3,25 @@
 Measuring what agent safeguards cost. For an assistant that reads untrusted content on behalf of a
 user, which defences reduce attack success without making the assistant useless, and by how much?
 
-Status: scaffold, 2026-11-04. Nothing has been measured yet. This file is rewritten as results come in;
-the build history is in CHANGELOG.md and the pre-registered design is in docs/design.md.
+Status: first full results, 2026-11-04. Four models, seven conditions, three epochs, plus an adaptive
+attacker. The report is docs/report.md, the tables are results/summary.md, the build history is in
+CHANGELOG.md and the pre-registered design is in docs/design.md.
+
+## Results in brief
+
+![What each defence buys and costs, by model](results/dots.png)
+
+- Hand-written injection attacks sit at a ceiling for current models: baseline attack success is 0.05 on
+  Haiku 5.5 and 0.00 on Sonnet 5.5 and Opus 5.5 across 20 attacks, against 0.12 on Haiku 4.5.
+- An attacker model found working variants against every target, but on current models only for false
+  portal text relayed as fact and for viewings proposed without the client naming a time.
+- The hardened prompt is free and cuts the baseline-beating attacks by half to three-quarters. The monitor
+  stops action attacks completely but cannot see statement attacks. Together they reach zero on every
+  current model with benign completion unchanged.
+- A strict prompt also reaches zero but costs 21 to 24 points of benign completion on every model, all
+  from tasks that need the description text, the agent's phone number, or an immediate booking.
+
+![Do the defences stop the attacks that beat the baseline?](results/found_attacks.png)
 
 ## Why
 
@@ -66,6 +83,7 @@ are in Chinese. Logs are Inspect `.eval` files; `inspect view` opens them in a b
 
 ## Provenance
 
-Author: Tin Tran. The code is written with coding agents (Claude Code) under the author's direction.
-The research question, the hazards and acceptance criteria in docs/design.md, the analysis and the
-report are the author's. Where an agent made a design choice, the changelog says so.
+Author: Tin Tran. The code, the scenarios and the first draft of docs/report.md were produced with
+Claude Code under the author's direction. The research question, the hazards and acceptance criteria in
+docs/design.md, the decisions recorded in CHANGELOG.md, and the final report text are the author's.
+Where an agent proposed a design choice, the changelog says so.
