@@ -1,0 +1,23 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# inspect run logs (large; curated logs for the report go under results/)
+logs/
+.inspect/
+
+# os / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
