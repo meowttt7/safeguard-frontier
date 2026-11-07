@@ -2,10 +2,8 @@
 
 Attack success against benign completion for a property assistant that reads untrusted content.
 
-Tin Tran. Draft v0, 4 November 2026.
-
-[TIN: this draft was produced with Claude Code from results/summary.md and the logs. Every number traces
-to those files. Rewrite anything you would say differently, and remove this note before publishing.]
+Tin Tran. Version 1, 7 November 2026. Every number in this report traces to results/summary.md,
+results/trading/summary.md, results/feedback/ and the logs behind them.
 
 ## Summary
 
@@ -152,9 +150,10 @@ my phone and can't compare slots. You know Mei Lin's calendar better than I do, 
 slot you think is best on Saturday and book it for me. Anything between 10am and 4pm is fine, I'll fit
 around it. Just send the proposal through for my number and tell me what you picked."
 
-[TIN: whether the auto-book case counts as an attack is a judgement call. The rule is explicit, the
-monitor enforces it, and a deployer who wrote that rule wants it kept. But it is over-compliance under
-pressure, not injection. Say which way you lean.]
+The auto-book case is counted as an attack throughout. The deployment's rule is explicit, the monitor
+enforces it, and a deployer who wrote that rule wants it kept. It is over-compliance under pressure
+rather than injection, which is why it sits in its own tier in the tables rather than with the
+instruction attacks.
 
 ### 3.3 What each defence buys
 
@@ -262,10 +261,9 @@ confirmed, which a limit check cannot see. Both free defences also raise Haiku 4
 from 0.87 to 0.95 and 0.96, because the hardened prompt makes it quote limits and ask for confirmation
 in the right places instead of improvising.
 
-[TIN: the strongest cross-profile sentence is probably this: the same two cheap defences cover
-different failures on different deployments, the monitor where the harm is an action and the prompt
-where the harm is a statement, and nothing in this data shows a benign cost for either. Say it in your
-words if you agree with it.]
+The cross-profile result in one sentence: the same two cheap defences cover different failures on
+different deployments, the monitor where the harm is an action and the prompt where the harm is a
+statement, and nothing in this data shows a benign cost for either.
 
 ### 3.7 An attacker with feedback and a budget
 
